@@ -1,467 +1,788 @@
 <!DOCTYPE html>
 <html>
-<head>
-    <meta charset="UTF-8">
-	<base href="/game/greedysnake/">
+  <head>
+    <meta charset="UTF-8" />
+    <base href="/game/greedysnake/" />
     <title>贪吃蛇游戏</title>
     <style>
-        body {
-            margin: 0;
-            padding: 0;
-            background: #1a1a1a;
-            font-family: 'Arial', sans-serif;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-            color: white;
-        }
-        .game-container {
-            text-align: center;
-        }
-        .game-info {
-            margin-bottom: 20px;
-        }
-        .score {
-            font-size: 24px;
-            font-weight: bold;
-            color: #4CAF50;
-            margin-bottom: 10px;
-        }
-        .level {
-            font-size: 20px;
-            font-weight: bold;
-            color: #2196F3;
-            margin-bottom: 10px;
-        }
-        .instructions {
-            font-size: 14px;
-            color: #ccc;
-            margin-bottom: 20px;
-        }
-        .game-over {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background: rgba(0, 0, 0, 0.8);
-            padding: 30px;
-            border-radius: 10px;
-            text-align: center;
-            display: none;
-        }
-        .restart-btn {
-            background: #4CAF50;
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            font-size: 16px;
-            border-radius: 5px;
-            cursor: pointer;
-            margin-top: 10px;
-        }
-        .restart-btn:hover {
-            background: #45a049;
-        }
-        canvas {
-            border: 2px solid #4CAF50;
-        }
+      .sound-toggle {
+        cursor: pointer;
+        transition: transform 0.2s ease;
+      }
+      .sound-toggle:hover {
+        transform: scale(1.1);
+      }
     </style>
-</head>
-<body>
-    <div class="game-container">
-        <div class="game-info">
-            <div class="score">得分: <span id="score">0</span></div>
-            <div class="level">等级: <span id="level">1</span> / 10</div>
-            <div class="instructions">使用方向键控制贪吃蛇移动</div>
-        </div>
-        <div id="gameArea"></div>
-        <div class="game-over" id="gameOver">
-            <h2>游戏结束!</h2>
-            <p>最终得分: <span id="finalScore">0</span></p>
-            <button class="restart-btn" onclick="restartGame()">重新开始</button>
-            <p style="margin-top: 15px; font-size: 14px; color: #ccc;">按 Enter 键快速重新开始</p>
-        </div>
-    </div>
-    
-    <script src="phaser.min.js"></script>
+    <link
+      href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css"
+      rel="stylesheet"
+    />
+    <link
+      href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css"
+      rel="stylesheet"
+    />
+    <script src="https://cdn.tailwindcss.com"></script>
     <script>
-        // 游戏配置
-        const GRID_SIZE = 30;
-        const CELL_SIZE = 20;
-        const INITIAL_SPEED = 200;
-        const MAX_LEVEL = 10;
-        const POINTS_PER_LEVEL = 500;
-        const SPEED_DECREASE_PER_LEVEL = 20;
-        const INITIAL_SNAKE_LENGTH = 3;
-        
-        var config = {
-            type: Phaser.AUTO,
-            width: GRID_SIZE * CELL_SIZE,
-            height: GRID_SIZE * CELL_SIZE,
-            scene: {
-                preload: preload,
-                create: create,
-                update: update
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              primary: "#faa31b",
+              secondary: "#f76c5e",
+              dark: "#2d3047",
+              light: "#e0e1dd",
+              board: "#bbada0",
+              cell: "#cdc1b4",
+              empty: "#cdc1b4",
+              bd: "#10101020",
+
+              "tile-2": "#eee4da",
+              "tile-4": "#ede0c8",
+              "tile-8": "#f2b179",
+              "tile-16": "#f59563",
+              "tile-32": "#f67c5f",
+              "tile-64": "#f65e3b",
+              "tile-128": "#edcf72",
+              "tile-256": "#edcc61",
+              "tile-512": "#edc850",
+              "tile-1024": "#edc53f",
+              "tile-2048": "#edc22e",
+              "tile-super": "#3c3a32",
             },
-            parent: 'gameArea'
+            fontFamily: {
+              game: ['"Clear Sans"', "Helvetica Neue", "Arial", "sans-serif"],
+            },
+            boxShadow: {
+              tile: "0 4px 8px rgba(0, 0, 0, 0.15)",
+              button: "0 4px 0 rgba(0, 0, 0, 0.15)",
+              "button-hover": "0 6px 0 rgba(0, 0, 0, 0.2)",
+            },
+          },
+        },
+      };
+    </script>
+  </head>
+  <body
+    class="bg-gradient-to-br from-light to-gray-300 min-h-screen font-game text-dark flex flex-col items-center justify-center p-4 sm:p-6"
+  >
+    <div class="w-full max-w-[500px] mx-auto flex flex-col items-center">
+      <!-- 游戏标题、分数和音效控制 -->
+      <div class="w-full flex justify-between items-center mt-2 mb-2">
+        <h1 class="text-[clamp(2rem,5vw,3rem)] font-bold text-dark text-shadow">
+          贪吃蛇
+        </h1>
+        <div class="flex gap-3 items-center">
+          <div class="bg-dark rounded-lg px-3 py-2 text-center">
+            <div class="text-xs text-primary uppercase font-bold">得分:</div>
+            <div id="score" class="text-white text-xl font-bold">0</div>
+          </div>
+          <div class="bg-dark rounded-lg px-3 py-2 text-center">
+            <div class="text-xs text-primary uppercase font-bold">等级:</div>
+            <div class="text-white text-xl font-bold">
+              <span id="level">1</span>/10
+            </div>
+          </div>
+
+          <div
+            id="soundToggle"
+            class="sound-toggle bg-dark text-white p-2 rounded-full"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="currentColor"
+            >
+              <path
+                id="soundIcon"
+                d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"
+              />
+            </svg>
+          </div>
+        </div>
+        <!-- <div class="instructions">使用方向键控制贪吃蛇移动</div> -->
+      </div>
+      <!-- 游戏控制和说明 -->
+      <div class="w-full flex justify-between items-center mb-4">
+        <div>
+          <button
+            id="newGame"
+            onclick="restartGame();"
+            class="bg-primary hover:bg-opacity-90 text-white font-bold py-2 px-4 rounded-lg shadow-button hover:shadow-button-hover transform hover:-translate-y-0.5 transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-secondary focus:ring-opacity-50"
+          >
+            新游戏
+          </button>
+          <button
+            id="pauseGame"
+            onclick="togglePauseGame();"
+            class="bg-secondary hover:bg-opacity-90 text-white font-bold py-2 px-4 rounded-lg shadow-button hover:shadow-button-hover transform hover:-translate-y-0.5 transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-secondary focus:ring-opacity-50"
+          >
+            暂停
+          </button>
+        </div>
+        <div class="text-sm text-gray-600 hidden sm:block">
+          <span class="mr-3">方向键控制蛇的移动方向</span>
+        </div>
+      </div>
+
+      <div id="gameArea" class="border-2 border-bd"></div>
+
+      <!-- 弹框相关代码 begin -->
+      <!-- 弹框样式 -->
+      <style>
+        /* 弹窗动画 */
+        .modal-appear {
+          animation: fadeIn 0.3s ease-out;
+        }
+
+        @keyframes fadeIn {
+          from {
+            opacity: 0;
+            /* transform: translate(-50%, -60%) scale(0.95); 从中央上方10%位置、95%大小开始 */
+          }
+          to {
+            opacity: 1;
+            /* transform: translate(-50%, -50%) scale(1); 到达中央位置、正常大小 */
+          }
+        }
+      </style>
+
+      <!-- 弹窗容器 -->
+      <div
+        id="modalContainer"
+        class="fixed inset-0 z-50 flex items-center justify-center pointer-events-none transition-opacity duration-300 hidden"
+      >
+        <!-- 弹窗主体 -->
+        <div
+          id="modalContent"
+          class="w-full max-w-[250px] mx-4 bg-light rounded-xl border-2 border-primary p-5 transform scale-95 transition-all duration-300"
+        >
+          <!-- 标题栏 -->
+          <div
+            class="flex justify-between items-center mb-4 pb-3 border-b border-gray-700"
+          >
+            <h3 class="text-xl font-bold text-white flex items-center">
+              <i class="fa fa-star text-primary mr-2"></i>
+              <span id="modalContentTitle" class="text-dark text-shadow"
+                >恭喜完成挑战</span
+              >
+            </h3>
+            <!-- <button
+              id="closeModal"
+              class="text-gray-400 hover:text-black transition-colors"
+            >
+              <i class="fa fa-times"></i>
+            </button> -->
+          </div>
+
+          <!-- 内容区 -->
+          <div class="text-gray-200">
+            <div>
+              <p class="text-sm text-dark text-shadow text-center">
+                <span id="modalContentText"> 获得经验: +250</span>
+              </p>
+            </div>
+            <p class="text-sm text-gray-400 text-center mt-5">
+              按 Enter 重新开始
+            </p>
+          </div>
+        </div>
+      </div>
+      <!-- 弹框脚本 -->
+      <script>
+        const modalContent = document.getElementById("modalContent");
+        const modalContainer = document.getElementById("modalContainer");
+        function showModelDialog(title, conent) {
+          modalContentTitle.textContent = title;
+          modalContentText.textContent = conent;
+          // 显示游戏结束界面
+          modalContainer.classList.remove("pointer-events-none", "hidden");
+          modalContent.classList.remove("scale-95");
+          modalContent.classList.add("scale-100");
+          document.body.style.overflow = "hidden";
+        }
+        // 关闭弹窗
+        const closeModalDialog = () => {
+          modalContainer.classList.add("hidden");
+          modalContent.classList.remove("scale-100");
+          modalContent.classList.add("scale-95");
+          document.body.style.overflow = "";
         };
 
-        var snake;
-        var food;
-        var cursors;
-        var score = 0;
-        var level = 1;
-        var gameSpeed = INITIAL_SPEED;
-        var direction = 'right';
-        var nextDirection = 'right';
-        var gameRunning = true;
-        var moveEvent;
-        var scoreText;
-        var finalScoreText;
+        //closeModal.addEventListener("click", closeModalDialog);
+        document.addEventListener("keydown", (e) => {
+          if (
+            e.key === "Enter" &&
+            !modalContent.classList.contains("pointer-events-none")
+          ) {
+            closeModalDialog();
+          }
+        });
+      </script>
 
-        var game = new Phaser.Game(config);
-        var scene;
-        var clickSound;
-        var scoreSound;
-        var completeSound;
-        var lastDirection = null;
+      <!-- 弹框相关代码 end -->
+    </div>
 
-        function preload() {
-            // 创建简单的图形代替外部图片
-            this.add.graphics()
-                .fillStyle(0x4CAF50)
-                .fillRect(0, 0, CELL_SIZE, CELL_SIZE)
-                .generateTexture('snake', CELL_SIZE, CELL_SIZE);
-            
-            this.add.graphics()
-                .fillStyle(0xFF5722)
-                .fillRect(0, 0, CELL_SIZE, CELL_SIZE)
-                .generateTexture('food', CELL_SIZE, CELL_SIZE);
-            
-            // 加载音效文件
-            this.load.audio('click', 'assets/sounds/click.mp3');
-            this.load.audio('score', 'assets/sounds/score.mp3');
-            this.load.audio('complete', 'assets/sounds/complete.mp3');
+    <script src="./phaser.min.js"></script>
+    <script>
+      // 游戏配置
+      const GRID_SIZE = 25;
+      const CELL_SIZE = 20;
+      const INITIAL_SPEED = 200;
+      const MAX_LEVEL = 10;
+      const POINTS_PER_LEVEL = 200;
+      const SPEED_DECREASE_PER_LEVEL = 20;
+      const INITIAL_SNAKE_LENGTH = 3;
+
+      var config = {
+        type: Phaser.AUTO,
+        width: GRID_SIZE * CELL_SIZE,
+        height: GRID_SIZE * CELL_SIZE,
+        scene: {
+          preload: preload,
+          create: create,
+          update: update,
+        },
+        parent: "gameArea",
+      };
+
+      var snake;
+      var food;
+      var cursors;
+      var score = 0;
+      var level = 1;
+      var gameSpeed = INITIAL_SPEED;
+      var direction = "right";
+      var nextDirection = "right";
+      var gameRunning = true;
+      var moveEvent;
+      var scoreText;
+      var finalScoreText;
+
+      var game = new Phaser.Game(config);
+      var scene;
+      var clickSound;
+      var scoreSound;
+      var completeSound;
+      var brokenSound;
+      var lastDirection = null;
+
+      // 音效控制 - 简化为只使用clickSound
+      const soundManager = {
+        enabled: localStorage.getItem("greedsnake-sound-enabled") !== "false", // 默认开启音效
+
+        // 播放音效
+        play: function (key) {
+            if(!this.enabled) return;
+
+            switch (key){
+                case "click":
+                    if(clickSound)
+                        clickSound.play();
+                    break;
+                case "score":
+                    if(scoreSound)
+                        scoreSound.play();
+                    break;  
+                case "complete":
+                    if(completeSound)
+                        completeSound.play();
+                    break;
+                case "broken":
+                    if(brokenSound)
+                        brokenSound.play();
+                    break;
+                default:
+                    break; 
+            }
+        },
+
+        // 切换音效开关状态
+        toggle: function () {
+          this.enabled = !this.enabled;
+          localStorage.setItem("greedsnake-sound-enabled", this.enabled);
+          this.updateIcon();
+        },
+
+        // 更新音效图标
+        updateIcon: function () {
+          const soundIcon = document.getElementById("soundIcon");
+          if (this.enabled) {
+            // 开启状态的图标
+            soundIcon.setAttribute(
+              "d",
+              "M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"
+            );
+          } else {
+            // 关闭状态的图标（带斜线）
+            soundIcon.setAttribute(
+              "d",
+              "M16.5 12c0-1.77-1.02-3.29-2.5-4.03v2.21l2.45 2.45c.03-.2.05-.41.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51C20.63 14.91 21 13.5 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3L3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06c1.38-.31 2.63-.95 3.69-1.81L19.73 21 21 19.73l-9-9L4.27 3zM12 4L9.91 6.09 12 8.18V4z"
+            );
+          }
+        },
+      };
+
+      // 初始化音效控制按钮状态
+      soundManager.updateIcon();
+      document.getElementById("soundToggle").addEventListener("click", () => {
+        soundManager.toggle();
+      });
+
+      function preload() {
+        // 创建简单的图形代替外部图片
+        this.add
+          .graphics()
+          .fillStyle(0xedcc61)
+          .fillRect(0, 0, CELL_SIZE - 2, CELL_SIZE - 2)
+          .generateTexture("snake", CELL_SIZE - 2, CELL_SIZE - 2);
+
+        this.add
+          .graphics()
+          .fillStyle(0xedc22e)
+          .fillRect(0, 0, CELL_SIZE - 2, CELL_SIZE - 2)
+          .generateTexture("food", CELL_SIZE - 2, CELL_SIZE - 2);
+
+        // 加载音效文件
+        this.load.audio("click", "assets/sounds/click.mp3");
+        this.load.audio("score", "assets/sounds/score.mp3");
+        this.load.audio("complete", "assets/sounds/complete.mp3");
+        this.load.audio("broken", "assets/sounds/broken.mp3");
+      }
+
+      function createGrid(scene) {
+        // 网格配置
+        const gridConfig = {
+          cellWidth: CELL_SIZE, // 单元格宽度
+          cellHeight: CELL_SIZE, // 单元格高度
+          color: 0xe0e1dd, // 网格线颜色
+          alpha: 0.1, // 网格线透明度
+          thickness: 1, // 网格线粗细
+        };
+
+        // 创建 Graphics 对象用于绘制网格createGrid
+        const grid = scene.add.graphics();
+
+        // 设置网格线样式
+        grid.lineStyle(
+          gridConfig.thickness,
+          gridConfig.color,
+          gridConfig.alpha
+        );
+
+        // 绘制垂直线
+        for (
+          let x = 0;
+          x <= scene.game.config.width;
+          x += gridConfig.cellWidth
+        ) {
+          grid.beginPath();
+          grid.moveTo(x, 0);
+          grid.lineTo(x, scene.game.config.height);
+          grid.closePath();
+          grid.strokePath();
         }
 
-        function create() {
-            scene = this; // 保存场景引用
-            
-            // 初始化音效
-            clickSound = this.sound.add('click');
-            scoreSound = this.sound.add('score');
-            completeSound = this.sound.add('complete');
-            
-            // 初始化蛇
-            snake = [
-                {x: 10, y: 10, sprite: null},
-                {x: 9, y: 10, sprite: null},
-                {x: 8, y: 10, sprite: null}
-            ];
-            
-            // 创建蛇的精灵
-            for (let i = 0; i < snake.length; i++) {
-                snake[i].sprite = this.add.image(
-                    snake[i].x * CELL_SIZE + CELL_SIZE/2,
-                    snake[i].y * CELL_SIZE + CELL_SIZE/2,
-                    'snake'
-                );
-            }
-            
-            // 创建食物
-            food = this.add.image(0, 0, 'food');
-            placeFood();
-            
-            // 设置键盘控制
-            cursors = this.input.keyboard.createCursorKeys();
-            
-            // 设置移动定时器
-            moveEvent = this.time.addEvent({ 
-                delay: gameSpeed, 
-                callback: moveSnake, 
-                callbackScope: this, 
-                loop: true 
-            });
-            
-            // 更新分数和等级显示
-            updateScore();
-            updateLevel();
+        // 绘制水平线
+        for (
+          let y = 0;
+          y <= scene.game.config.height;
+          y += gridConfig.cellHeight
+        ) {
+          grid.beginPath();
+          grid.moveTo(0, y);
+          grid.lineTo(scene.game.config.width, y);
+          grid.closePath();
+          grid.strokePath();
         }
 
-        function update(time, delta) {
-            if (!gameRunning) {
-                // 检查Enter键重新开始
-                if (Phaser.Input.Keyboard.JustDown(this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.ENTER))) {
-                    if (clickSound) clickSound.play();
-                    restartGame();
-                }
-                return;
-            }
-            
-            // 处理方向键输入
-            if (cursors.left.isDown && direction !== 'right') {
-                if (nextDirection !== 'left') {
-                    if (clickSound) clickSound.play();
-                    nextDirection = 'left';
-                }
-            } else if (cursors.right.isDown && direction !== 'left') {
-                if (nextDirection !== 'right') {
-                    if (clickSound) clickSound.play();
-                    nextDirection = 'right';
-                }
-            } else if (cursors.up.isDown && direction !== 'down') {
-                if (nextDirection !== 'up') {
-                    if (clickSound) clickSound.play();
-                    nextDirection = 'up';
-                }
-            } else if (cursors.down.isDown && direction !== 'up') {
-                if (nextDirection !== 'down') {
-                    if (clickSound) clickSound.play();
-                    nextDirection = 'down';
-                }
-            }
+        // 可选：绘制原点标记(测试标记位置使用)
+        // const originMarker = this.add.graphics();
+        // originMarker.fillStyle(0xff0000, 1);
+        // originMarker.fillCircle(100, 100, 5);
+      }
+
+      function create() {
+        scene = this; // 保存场景引用
+
+        // 初始化音效
+        clickSound = this.sound.add("click");
+        scoreSound = this.sound.add("score");
+        completeSound = this.sound.add("complete");
+        brokenSound = this.sound.add("broken");
+
+        // 设置背景颜色
+        this.cameras.main.setBackgroundColor("#A9A9A9"); // You can change the color code here
+
+        // 初始化蛇
+        snake = [
+          { x: 10, y: 10, sprite: null },
+          { x: 9, y: 10, sprite: null },
+          { x: 8, y: 10, sprite: null },
+        ];
+
+        // 创建蛇的精灵
+        for (let i = 0; i < snake.length; i++) {
+          snake[i].sprite = this.add.image(
+            snake[i].x * CELL_SIZE + CELL_SIZE / 2,
+            snake[i].y * CELL_SIZE + CELL_SIZE / 2,
+            "snake"
+          );
         }
 
-        function moveSnake() {
-            if (!gameRunning) return;
-            
-            direction = nextDirection;
-            
-            // 计算新的头部位置
-            let headX = snake[0].x;
-            let headY = snake[0].y;
-            
-            switch(direction) {
-                case 'left': headX--; break;
-                case 'right': headX++; break;
-                case 'up': headY--; break;
-                case 'down': headY++; break;
-            }
-            
-            // 检查墙壁碰撞
-            if (headX < 0 || headX >= GRID_SIZE || headY < 0 || headY >= GRID_SIZE) {
-                gameOver();
-                return;
-            }
-            
-            // 检查自身碰撞
-            for (let i = 0; i < snake.length; i++) {
-                if (snake[i].x === headX && snake[i].y === headY) {
-                    gameOver();
-                    return;
-                }
-            }
-            
-            // 移动蛇身
-            for (let i = snake.length - 1; i > 0; i--) {
-                snake[i].x = snake[i - 1].x;
-                snake[i].y = snake[i - 1].y;
-                snake[i].sprite.x = snake[i].x * CELL_SIZE + CELL_SIZE/2;
-                snake[i].sprite.y = snake[i].y * CELL_SIZE + CELL_SIZE/2;
-            }
-            
-            // 移动头部
-            snake[0].x = headX;
-            snake[0].y = headY;
-            snake[0].sprite.x = headX * CELL_SIZE + CELL_SIZE/2;
-            snake[0].sprite.y = headY * CELL_SIZE + CELL_SIZE/2;
-            
-            // 检查是否吃到食物
-            if (snake[0].x === food.gridX && snake[0].y === food.gridY) {
-                eatFood();
-            }
+        // 创建食物
+        food = this.add.image(0, 0, "food");
+        placeFood();
+
+        // 设置键盘控制
+        cursors = this.input.keyboard.createCursorKeys();
+
+        // 设置移动定时器
+        moveEvent = this.time.addEvent({
+          delay: gameSpeed,
+          callback: moveSnake,
+          callbackScope: this,
+          loop: true,
+        });
+
+        // 更新分数和等级显示
+        updateScore();
+        updateLevel();
+
+        createGrid(this);
+      }
+
+      function update(time, delta) {
+        if (!gameRunning) {
+          // 检查Enter键重新开始
+          if (
+            Phaser.Input.Keyboard.JustDown(
+              this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.ENTER)
+            )
+          ) {
+            soundManager.play("click");
+            restartGame();
+          }
+          return;
         }
 
-        function eatFood() {
-            // 增加分数
-            score += 10;
-            updateScore();
-            
-            // 播放得分音效
-            if (scoreSound) scoreSound.play();
-            
-            // 检查是否升级
-            checkLevelUp();
-            
-            // 增加蛇的长度
-            let tail = snake[snake.length - 1];
-            let newPart = {
-                x: tail.x,
-                y: tail.y,
-                sprite: scene.add.image(
-                    tail.x * CELL_SIZE + CELL_SIZE/2,
-                    tail.y * CELL_SIZE + CELL_SIZE/2,
-                    'snake'
-                )
-            };
-            snake.push(newPart);
-            
-            // 重新放置食物
-            placeFood.call(scene);
+        // 处理方向键输入
+        if (cursors.left.isDown && direction !== "right") {
+          if (nextDirection !== "left") {
+            soundManager.play("click");
+            nextDirection = "left";
+          }
+        } else if (cursors.right.isDown && direction !== "left") {
+          if (nextDirection !== "right") {
+            soundManager.play("click");
+            nextDirection = "right";
+          }
+        } else if (cursors.up.isDown && direction !== "down") {
+          if (nextDirection !== "up") {
+            soundManager.play("click");
+            nextDirection = "up";
+          }
+        } else if (cursors.down.isDown && direction !== "up") {
+          if (nextDirection !== "down") {
+            soundManager.play("click");
+            nextDirection = "down";
+          }
+        }
+      }
+
+      function moveSnake() {
+        if (!gameRunning) return;
+
+        direction = nextDirection;
+
+        // 计算新的头部位置
+        let headX = snake[0].x;
+        let headY = snake[0].y;
+
+        switch (direction) {
+          case "left":
+            headX--;
+            break;
+          case "right":
+            headX++;
+            break;
+          case "up":
+            headY--;
+            break;
+          case "down":
+            headY++;
+            break;
         }
 
-        function placeFood() {
-            let foodX, foodY;
-            do {
-                foodX = Math.floor(Math.random() * GRID_SIZE);
-                foodY = Math.floor(Math.random() * GRID_SIZE);
-            } while (isSnakePosition(foodX, foodY));
-            
-            food.x = foodX * CELL_SIZE + CELL_SIZE/2;
-            food.y = foodY * CELL_SIZE + CELL_SIZE/2;
-            food.gridX = foodX;
-            food.gridY = foodY;
+        // 检查墙壁碰撞
+        if (
+          headX < 0 ||
+          headX >= GRID_SIZE ||
+          headY < 0 ||
+          headY >= GRID_SIZE
+        ) {
+          gameOver();
+          return;
         }
 
-        function isSnakePosition(x, y) {
-            for (let i = 0; i < snake.length; i++) {
-                if (snake[i].x === x && snake[i].y === y) {
-                    return true;
-                }
+        // 检查自身碰撞
+        for (let i = 0; i < snake.length; i++) {
+          if (snake[i].x === headX && snake[i].y === headY) {
+            gameOver();
+            return;
+          }
+        }
+
+        // 移动蛇身
+        for (let i = snake.length - 1; i > 0; i--) {
+          snake[i].x = snake[i - 1].x;
+          snake[i].y = snake[i - 1].y;
+          snake[i].sprite.x = snake[i].x * CELL_SIZE + CELL_SIZE / 2;
+          snake[i].sprite.y = snake[i].y * CELL_SIZE + CELL_SIZE / 2;
+        }
+
+        // 移动头部
+        snake[0].x = headX;
+        snake[0].y = headY;
+        snake[0].sprite.x = headX * CELL_SIZE + CELL_SIZE / 2;
+        snake[0].sprite.y = headY * CELL_SIZE + CELL_SIZE / 2;
+
+        // 检查是否吃到食物
+        if (snake[0].x === food.gridX && snake[0].y === food.gridY) {
+          eatFood();
+        }
+      }
+
+      function eatFood() {
+        // 增加分数
+        score += 10;
+        updateScore();
+
+        // 播放得分音效
+        soundManager.play("score");
+
+        // 检查是否升级
+        checkLevelUp();
+
+        // 增加蛇的长度
+        let tail = snake[snake.length - 1];
+        let newPart = {
+          x: tail.x,
+          y: tail.y,
+          sprite: scene.add.image(
+            tail.x * CELL_SIZE + CELL_SIZE / 2,
+            tail.y * CELL_SIZE + CELL_SIZE / 2,
+            "snake"
+          ),
+        };
+        snake.push(newPart);
+
+        // 重新放置食物
+        placeFood.call(scene);
+      }
+
+      function placeFood() {
+        let foodX, foodY;
+        do {
+          foodX = Math.floor(Math.random() * GRID_SIZE);
+          foodY = Math.floor(Math.random() * GRID_SIZE);
+        } while (isSnakePosition(foodX, foodY));
+
+        food.x = foodX * CELL_SIZE + CELL_SIZE / 2;
+        food.y = foodY * CELL_SIZE + CELL_SIZE / 2;
+        food.gridX = foodX;
+        food.gridY = foodY;
+      }
+
+      function isSnakePosition(x, y) {
+        for (let i = 0; i < snake.length; i++) {
+          if (snake[i].x === x && snake[i].y === y) {
+            return true;
+          }
+        }
+        return false;
+      }
+
+      function gameOver() {
+        gameRunning = false;
+        moveEvent.remove();
+        soundManager.play("broken");
+
+        // 显示游戏结束界面
+        showModelDialog("游戏结束！", "你的得分：" + score);
+      }
+      function gameWin() {
+        gameRunning = false;
+        moveEvent.remove();
+
+        // 显示游戏结束界面
+        showModelDialog("恭喜完成挑战！", "你的得分：" + score);
+      }
+
+      function togglePauseGame() {
+        if (gameRunning) {
+          gameRunning = false;
+          document.getElementById("pauseGame").textContent = "继续";
+        } else {
+          gameRunning = true;
+          document.getElementById("pauseGame").textContent = "暂停";
+        }
+
+        soundManager.play("click");
+        return gameRunning;
+      }
+
+      function restartGame() {
+        // 重置游戏状态
+        score = 0;
+        level = 1;
+        gameSpeed = INITIAL_SPEED;
+        direction = "right";
+        nextDirection = "right";
+        gameRunning = true;
+
+        // 隐藏游戏结束界面
+        closeModalDialog();
+
+        // 重置场景而不是重新创建游戏
+        resetGameScene();
+        soundManager.play("click");
+      }
+
+      function resetGameScene() {
+        // 清除现有的蛇和食物
+        if (snake) {
+          for (let i = 0; i < snake.length; i++) {
+            if (snake[i].sprite) {
+              snake[i].sprite.destroy();
             }
-            return false;
+          }
+        }
+        if (food) {
+          food.destroy();
+        }
+        if (moveEvent) {
+          moveEvent.remove();
         }
 
-        function gameOver() {
-            gameRunning = false;
-            moveEvent.remove();
-            
-            // 显示游戏结束界面
-            document.getElementById('finalScore').textContent = score;
-            document.getElementById('gameOver').style.display = 'block';
+        // 重新初始化音效
+        clickSound = scene.sound.add("click");
+        scoreSound = scene.sound.add("score");
+        completeSound = scene.sound.add("complete");
+
+        // 重新初始化蛇
+        snake = [
+          { x: 15, y: 15, sprite: null },
+          { x: 14, y: 15, sprite: null },
+          { x: 13, y: 15, sprite: null },
+        ];
+
+        // 创建蛇的精灵
+        for (let i = 0; i < snake.length; i++) {
+          snake[i].sprite = scene.add.image(
+            snake[i].x * CELL_SIZE + CELL_SIZE / 2,
+            snake[i].y * CELL_SIZE + CELL_SIZE / 2,
+            "snake"
+          );
         }
 
-        function restartGame() {
-            // 重置游戏状态
-            score = 0;
-            level = 1;
-            gameSpeed = INITIAL_SPEED;
-            direction = 'right';
-            nextDirection = 'right';
-            gameRunning = true;
-            
-            // 隐藏游戏结束界面
-            document.getElementById('gameOver').style.display = 'none';
-            
-            // 重置场景而不是重新创建游戏
-            resetGameScene();
-        }
+        // 重新创建食物
+        food = scene.add.image(0, 0, "food");
+        placeFood.call(scene);
 
-        function resetGameScene() {
-            // 清除现有的蛇和食物
-            if (snake) {
-                for (let i = 0; i < snake.length; i++) {
-                    if (snake[i].sprite) {
-                        snake[i].sprite.destroy();
-                    }
-                }
+        // 重新设置移动定时器
+        moveEvent = scene.time.addEvent({
+          delay: gameSpeed,
+          callback: moveSnake,
+          callbackScope: scene,
+          loop: true,
+        });
+
+        // 更新显示
+        updateScore();
+        updateLevel();
+      }
+
+      function updateScore() {
+        document.getElementById("score").textContent = score;
+      }
+
+      function updateLevel() {
+        document.getElementById("level").textContent = level;
+      }
+
+      function checkLevelUp() {
+        let newLevel = Math.min(
+          MAX_LEVEL,
+          Math.floor(score / POINTS_PER_LEVEL) + 1
+        );
+
+        if (newLevel > level) {
+          console.log("newLevel: ", newLevel);
+          level = newLevel;
+
+          if (level == MAX_LEVEL) {
+            gameWin();
+            return;
+          }
+          updateLevel();
+          updateGameSpeed();
+          resetSnakeLength();
+
+          // 播放升级音效
+          soundManager.play("complete");
+
+          // 显示升级提示
+          showLevelUpMessage();
+        }
+      }
+
+      function updateGameSpeed() {
+        // 根据等级调整游戏速度
+        let speedReduction = (level - 1) * SPEED_DECREASE_PER_LEVEL;
+        gameSpeed = Math.max(50, INITIAL_SPEED - speedReduction);
+        if (moveEvent) {
+          moveEvent.delay = gameSpeed;
+        }
+      }
+
+      function resetSnakeLength() {
+        // 移除多余的蛇身部分
+        while (snake.length > INITIAL_SNAKE_LENGTH) {
+          let removedPart = snake.pop();
+          removedPart.sprite.destroy();
+        }
+      }
+
+      function showLevelUpMessage() {
+        // 创建升级提示
+        let levelUpText = scene.add
+          .text(
+            scene.cameras.main.width / 2,
+            scene.cameras.main.height / 2,
+            `升级到等级 ${level}!\n蛇长度重置!`,
+            {
+              fontSize: "32px",
+              fill: "#FFD700",
+              fontWeight: "bold",
+              align: "center",
+              // 增加内边距防止文本贴边
+              padding: {
+                left: 10,
+                right: 10,
+                top: 5,
+                bottom: 5,
+              },
             }
-            if (food) {
-                food.destroy();
-            }
-            if (moveEvent) {
-                moveEvent.remove();
-            }
-            
-            // 重新初始化音效
-            clickSound = scene.sound.add('click');
-            scoreSound = scene.sound.add('score');
-            completeSound = scene.sound.add('complete');
-            
-            // 重新初始化蛇
-            snake = [
-                {x: 15, y: 15, sprite: null},
-                {x: 14, y: 15, sprite: null},
-                {x: 13, y: 15, sprite: null}
-            ];
-            
-            // 创建蛇的精灵
-            for (let i = 0; i < snake.length; i++) {
-                snake[i].sprite = scene.add.image(
-                    snake[i].x * CELL_SIZE + CELL_SIZE/2,
-                    snake[i].y * CELL_SIZE + CELL_SIZE/2,
-                    'snake'
-                );
-            }
-            
-            // 重新创建食物
-            food = scene.add.image(0, 0, 'food');
-            placeFood.call(scene);
-            
-            // 重新设置移动定时器
-            moveEvent = scene.time.addEvent({ 
-                delay: gameSpeed, 
-                callback: moveSnake, 
-                callbackScope: scene, 
-                loop: true 
-            });
-            
-            // 更新显示
-            updateScore();
-            updateLevel();
-        }
+          )
+          .setOrigin(0.5);
 
-        function updateScore() {
-            document.getElementById('score').textContent = score;
-        }
-
-        function updateLevel() {
-            document.getElementById('level').textContent = level;
-        }
-
-        function checkLevelUp() {
-            let newLevel = Math.min(MAX_LEVEL, Math.floor(score / POINTS_PER_LEVEL) + 1);
-            if (newLevel > level) {
-                level = newLevel;
-                updateLevel();
-                updateGameSpeed();
-                resetSnakeLength();
-                
-                // 播放升级音效
-                if (completeSound) completeSound.play();
-                
-                // 显示升级提示
-                showLevelUpMessage();
-            }
-        }
-
-        function updateGameSpeed() {
-            // 根据等级调整游戏速度
-            let speedReduction = (level - 1) * SPEED_DECREASE_PER_LEVEL;
-            gameSpeed = Math.max(50, INITIAL_SPEED - speedReduction);
-            if (moveEvent) {
-                moveEvent.delay = gameSpeed;
-            }
-        }
-
-        function resetSnakeLength() {
-            // 移除多余的蛇身部分
-            while (snake.length > INITIAL_SNAKE_LENGTH) {
-                let removedPart = snake.pop();
-                removedPart.sprite.destroy();
-            }
-        }
-
-        function showLevelUpMessage() {
-            // 创建升级提示
-            let levelUpText = scene.add.text(
-                scene.cameras.main.width / 2,
-                scene.cameras.main.height / 2,
-                `升级到等级 ${level}!\n蛇长度重置!`,
-                {
-                    fontSize: '32px',
-                    fill: '#FFD700',
-                    fontWeight: 'bold',
-                    align: 'center'
-                }
-            ).setOrigin(0.5);
-            
-            // 2秒后移除提示
-            scene.time.delayedCall(2000, function() {
-                levelUpText.destroy();
-            });
-        }
+        // 2秒后移除提示
+        scene.time.delayedCall(3000, function () {
+          levelUpText.destroy();
+        });
+      }
     </script>
-</body>
+  </body>
 </html>
